@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topography Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #333;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #controls label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        #controls input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <label for="scaleSlider">Scale: <span id="scaleValue">40</span></label>
+        <input id="scaleSlider" type="range" min="25" max="100" value="40">
+
+        <label for="speedSlider">Flying Speed: <span id="speedValue">0.01</span></label>
+        <input id="speedSlider" type="range" min="0.001" max="0.05" step="0.001" value="0.01">
+
+        <label for="heightSlider">Height Range: <span id="heightValue">50</span></label>
+        <input id="heightSlider" type="range" min="10" max="100" value="50">
+
+        <label for="noiseSlider">Noise Scale: <span id="noiseValue">0.1</span></label>
+        <input id="noiseSlider" type="range" min="0.05" max="0.5" step="0.01" value="0.1">
+
+        <label for="colorSlider">Color Intensity: <span id="colorValue">1</span></label>
+        <input id="colorSlider" type="range" min="0.5" max="2" step="0.1" value="1">
+
+        <label for="rotationSlider">Rotation Speed: <span id="rotationValue">0.001</span></label>
+        <input id="rotationSlider" type="range" min="0.001" max="0.05" step="0.001" value="0.001">
+
+        <label for="bgColorSlider">Background Intensity: <span id="bgColorValue">20</span></label>
+        <input id="bgColorSlider" type="range" min="0" max="100" value="20">
+
+        <label for="hsbMode">Enable HSB Mode</label>
+        <input id="hsbMode" type="checkbox">
+
+        <label for="hueShift">Hue Shift: <span id="hueShiftValue">0</span></label>
+        <input id="hueShift" type="range" min="0" max="360" value="0">
+
+        <button id="resetButton" style="background-color: red;">Reset</button>
+    </div>
+
+    <script>
+        let scale = 40, cols, rows, terrain = [], flying = 0, heightRange = 50, flyingSpeed = 0.01, noiseScale = 0.1, colorIntensity = 1, rotationSpeed = 0.001, bgColorIntensity = 20;
+        let useHSB = false, hueShift = 0;
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight, WEBGL);
+            cols = floor((width * 1.5) / scale);
+            rows = floor((height * 2) / scale);
+            terrain = Array.from({ length: cols }, () => Array(rows).fill(0));
+
+            // Add event listener for HSB mode toggle
+            document.getElementById('hsbMode').addEventListener('change', (e) => {
+                useHSB = e.target.checked;
+                colorMode(useHSB ? HSB : RGB); // Switch color mode
+            });
+
+            // Add event listeners for sliders
+            document.getElementById('scaleSlider').addEventListener('input', (e) => {
+                scale = parseInt(e.target.value);
+                document.getElementById('scaleValue').textContent = scale;
+                cols = floor((width * 1.5) / scale);
+                rows = floor((height * 2) / scale);
+                terrain = Array.from({ length: cols }, () => Array(rows).fill(0));
+            });
+
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                flyingSpeed = parseFloat(e.target.value);
+                document.getElementById('speedValue').textContent = flyingSpeed.toFixed(3);
+            });
+
+            document.getElementById('heightSlider').addEventListener('input', (e) => {
+                heightRange = parseInt(e.target.value);
+                document.getElementById('heightValue').textContent = heightRange;
+            });
+
+            document.getElementById('noiseSlider').addEventListener('input', (e) => {
+                noiseScale = parseFloat(e.target.value);
+                document.getElementById('noiseValue').textContent = noiseScale.toFixed(2);
+            });
+
+            document.getElementById('colorSlider').addEventListener('input', (e) => {
+                colorIntensity = parseFloat(e.target.value);
+                document.getElementById('colorValue').textContent = colorIntensity.toFixed(1);
+            });
+
+            document.getElementById('rotationSlider').addEventListener('input', (e) => {
+                rotationSpeed = parseFloat(e.target.value);
+                document.getElementById('rotationValue').textContent = rotationSpeed.toFixed(3);
+            });
+
+            document.getElementById('bgColorSlider').addEventListener('input', (e) => {
+                bgColorIntensity = parseInt(e.target.value);
+                document.getElementById('bgColorValue').textContent = bgColorIntensity;
+            });
+
+            document.getElementById('hueShift').addEventListener('input', (e) => {
+                hueShift = parseInt(e.target.value);
+                document.getElementById('hueShiftValue').textContent = hueShift;
+            });
+
+            document.getElementById('resetButton').addEventListener('click', () => {
+                scale = 40;
+                flyingSpeed = 0.01;
+                heightRange = 50;
+                noiseScale = 0.1;
+                colorIntensity = 1;
+                rotationSpeed = 0.001;
+                bgColorIntensity = 20;
+                hueShift = 0;
+                useHSB = false;
+                document.getElementById('hsbMode').checked = false;
+                colorMode(RGB); // Reset to RGB mode
+
+                document.getElementById('scaleSlider').value = scale;
+                document.getElementById('speedSlider').value = flyingSpeed;
+                document.getElementById('heightSlider').value = heightRange;
+                document.getElementById('noiseSlider').value = noiseScale;
+                document.getElementById('colorSlider').value = colorIntensity;
+                document.getElementById('rotationSlider').value = rotationSpeed;
+                document.getElementById('bgColorSlider').value = bgColorIntensity;
+                document.getElementById('hueShift').value = hueShift;
+
+                document.getElementById('scaleValue').textContent = scale;
+                document.getElementById('speedValue').textContent = flyingSpeed.toFixed(3);
+                document.getElementById('heightValue').textContent = heightRange;
+                document.getElementById('noiseValue').textContent = noiseScale.toFixed(2);
+                document.getElementById('colorValue').textContent = colorIntensity.toFixed(1);
+                document.getElementById('rotationValue').textContent = rotationSpeed.toFixed(3);
+                document.getElementById('bgColorValue').textContent = bgColorIntensity;
+                document.getElementById('hueShiftValue').textContent = hueShift;
+            });
+        }
+
+        function draw() {
+            flying -= flyingSpeed;
+            for (let y = 0, yoff = flying; y < rows; y++, yoff += noiseScale) {
+                for (let x = 0, xoff = 0; x < cols; x++, xoff += noiseScale) {
+                    terrain[x][y] = map(noise(xoff, yoff), 0, 0.45, -heightRange, heightRange);
+                }
+            }
+
+            background(bgColorIntensity, bgColorIntensity + 4, bgColorIntensity + 62); // Dynamic background
+            translate(0, 50, -300);
+            rotateX(PI / 3.9);
+            rotateZ(frameCount * rotationSpeed); // Apply rotation speed
+            translate(-cols * scale / 2, -rows * scale / 2, 550);
+
+            for (let y = 0; y < rows - 1; y++) {
+                beginShape(TRIANGLE_STRIP);
+                for (let x = 0; x < cols; x++) {
+                    let h = terrain[x][y];
+                    if (useHSB) {
+                        let hueValue = (map(h, -heightRange, heightRange, 50, 150) + hueShift) % 360; // Apply hue shift
+                        fill(
+                            hueValue,
+                            map(h, -heightRange, heightRange, 50, 100),
+                            map(h, -heightRange, heightRange, 150, 255)
+                        );
+                    } else {
+                        fill(
+                            map(h, -heightRange, heightRange, 50 * colorIntensity, 150 * colorIntensity),
+                            map(h, -heightRange, heightRange, 0, 100 * colorIntensity),
+                            map(h, -heightRange, heightRange, 150 * colorIntensity, 255 * colorIntensity)
+                        );
+                    }
+                    stroke(200, 200, 255);
+                    vertex(x * scale, y * scale, h);
+                    vertex(x * scale, (y + 1) * scale, terrain[x][y + 1]);
+                }
+                endShape();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+
+</html>
